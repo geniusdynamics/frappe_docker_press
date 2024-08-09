@@ -74,8 +74,8 @@ jobs:
         uses: docker/bake-action@v5.5.0
         with:
           push: true
-          args: |
-            APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}
+          set: |
+            *.args.APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}
         env:
           REGISTRY_USER: localhost:5000/frappe
 
