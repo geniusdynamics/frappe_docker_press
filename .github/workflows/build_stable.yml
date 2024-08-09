@@ -51,6 +51,7 @@ jobs:
       push: ${{ github.repository == 'geniusdynamics/frappe_docker' && github.event_name != 'pull_request' }}
       python_version: 3.11.6
       node_version: 18.18.2
+      file_path: ./apps.json
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -93,25 +94,3 @@ jobs:
             git push origin main
           fi
 
-  release_helm:
-    name: Release Helm
-    runs-on: ubuntu-latest
-    if: ${{ github.repository == 'geniusdynamics/frappe_docker' && github.event_name != 'pull_request' }}
-    needs: v15
-
-    steps:
-      - name: Setup deploy key
-        uses: webfactory/ssh-agent@v0.8.0
-        with:
-          ssh-private-key: ${{ secrets.HELM_DEPLOY_KEY }}
-
-      - name: Setup Git Credentials
-        run: |
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-
-      - name: Release
-        run: |
-          git clone git@github.com:frappe/helm.git && cd helm
-          pip install -r release_wizard/requirements.txt
-          ./release_wizard/wizard 15 patch --remote origin --ci
