@@ -11,6 +11,9 @@ variable PYTHON_VERSION {
 variable NODE_VERSION {
     default = "18.18.2"
 }
+variable APPS_JSON_BASE64 {
+  default = ""
+}
 
 variable "FRAPPE_VERSION" {
     default = "develop"
@@ -87,7 +90,7 @@ target "default-args" {
 target "erpnext" {
     inherits = ["default-args"]
     context = "."
-    dockerfile = "images/production/Containerfile"
+    dockerfile = "images/custom/Containerfile"
     target = "erpnext"
     tags = tag("erpnext", "${ERPNEXT_VERSION}")
 }
