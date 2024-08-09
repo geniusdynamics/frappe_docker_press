@@ -22,6 +22,10 @@ on:
         required: true
         type: string
         description: NodeJS Version
+      file_path:
+          required: false
+          type: string
+          description: "Path to the file to be encoded and passed as a build argument"
     secrets:
       DOCKERHUB_USERNAME:
         required: true
@@ -50,15 +54,28 @@ jobs:
       - name: Get latest versions
         run: python3 ./.github/scripts/get_latest_tags.py --repo ${{ inputs.repo }} --version ${{ inputs.version }}
 
+      - name: "Encode file to base64"
+        if: ${{ inputs.file_path }}
+        id: encode_file
+        run: |
+          echo "APPS_JSON_BASE64=$(base64 -w 0 ${{ inputs.file_path }})" >> $GITHUB_ENV
+
       - name: Set build args
         run: |
           echo "PYTHON_VERSION=${{ inputs.python_version }}" >> "$GITHUB_ENV"
           echo "NODE_VERSION=${{ inputs.node_version }}" >> "$GITHUB_ENV"
+          if [ -n "${{ env.APPS_JSON_BASE64 }}" ]; then
+            echo "BUILD_ARGS=APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}" >> "$GITHUB_ENV"
+          elif [ -n "${{ inputs.build_args }}" ]; then
+            echo "BUILD_ARGS=${{ inputs.build_args }}" >> "$GITHUB_ENV"
+          fi
 
       - name: Build
         uses: docker/bake-action@v5.5.0
         with:
           push: true
+          args: |
+            APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}
         env:
           REGISTRY_USER: localhost:5000/frappe
 
@@ -79,8 +96,8 @@ jobs:
         if: ${{ inputs.push }}
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Push
         if: ${{ inputs.push }}
