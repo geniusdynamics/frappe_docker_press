@@ -118,7 +118,7 @@ RUN export APP_INSTALL_ARGS="" && \
   if [ -n "${APPS_JSON_BASE64}" ]; then \
     export APP_INSTALL_ARGS="--apps_path=/opt/frappe/apps.json"; \
   fi && \
-  bench init ${APP_INSTALL_ARGS}\
+  bench init \
     --frappe-branch=${FRAPPE_BRANCH} \
     --frappe-path=${FRAPPE_PATH} \
     --no-procfile \
@@ -127,6 +127,28 @@ RUN export APP_INSTALL_ARGS="" && \
     --verbose \
     /home/frappe/frappe-bench && \
   cd /home/frappe/frappe-bench && \
+    apps=( \
+      "https://github.com/frappe/erpnext version-15" \
+      "https://github.com/frappe/payments version-15" \
+      "https://github.com/navariltd/navari_csf_ke version-15" \
+      "https://github.com/frappe/hrms version-15" \
+      "https://github.com/navariltd/kenya-compliance develop" \
+      "https://github.com/navariltd/frappe-mpesa-payments develop" \
+      "https://github.com/navariltd/navari-mpesa-b2c develop" \
+      "https://github.com/navariltd/nl-attendance-timesheet version-15" \
+      "https://github.com/navariltd/nl-piece-rate-pay version-15" \
+      "https://github.com/shridarpatil/frappe_whatsapp master" \
+      "https://github.com/frappe/education version-15" \
+      "https://github.com/mymi14s/frappe_paystack version-15" \
+      "https://github.com/frappe/print_designer develop" \
+      "https://github.com/frappe/webshop version-15" \
+      "https://github.com/bhavesh95863/whitelabel version-15" \
+    ) && \
+    for app in "${apps[@]}"; do \
+      app_url=$(echo "$app" | awk '{print $1}') && \
+      branch=$(echo "$app" | awk '{print $2}') && \
+      bench get-app --branch="$branch" --resolve-deps "$(basename $app_url .git)" "$app_url"; \
+    done && \
   echo "{}" > sites/common_site_config.json && \
   find apps -mindepth 1 -path "*/.git" | xargs rm -fr
 
