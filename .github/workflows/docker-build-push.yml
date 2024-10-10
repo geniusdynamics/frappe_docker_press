@@ -71,7 +71,7 @@ jobs:
           fi
 
       - name: Build
-        uses: docker/bake-action@v5.5.0
+        uses: docker/bake-action@v5.10.0
         with:
           push: true
           set: |
@@ -101,6 +101,6 @@ jobs:
 
       - name: Push
         if: ${{ inputs.push }}
-        uses: docker/bake-action@v5.5.0
+        uses: docker/bake-action@v5.10.0
         with:
           push: true
