@@ -96,10 +96,6 @@
     "branch": "develop"
   },
   {
-    "url": "https://github.com/frappe/gameplan",
-    "branch": "develop"
-  },
-  {
     "url": "https://github.com/genforge/raven",
     "branch": "develop"
   },
