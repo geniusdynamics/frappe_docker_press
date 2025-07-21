@@ -1,40 +1,151 @@
-name: Build and Push Multi-Platform Docker Image
+name: AutoBuild ERPNext Image
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: "0 2 * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    # paths:
+    #   - "Dockerfile"
+    #   - "apps.json"
+    #   - "scripts/**"
+    #   - ".github/workflows/autobuild.yml"
 
 jobs:
   build-and-push:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+
+    env:
+      DOCKER_HUB_USERNAME_SET: ${{ secrets.DOCKER_HUB_USERNAME != '' }}
+      DOCKER_HUB_ACCESS_TOKEN_SET: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN != '' }}
+      GHCR_PAT_IS_SET: ${{ secrets.GHCR_PAT != '' }}
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Fetch Latest ERPNext Release Tag
+        id: get_erpnext_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          API_URL="https://api.github.com/repos/frappe/erpnext/releases/latest"
+          HEADERS=(-H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28")
+
+          LATEST_RELEASE_DATA=$(curl -sL "${HEADERS[@]}" "$API_URL")
+
+          if echo "$LATEST_RELEASE_DATA" | jq -e '.tag_name' > /dev/null; then
+            LATEST=$(echo "$LATEST_RELEASE_DATA" | jq -r .tag_name)
+            echo "Fetched LATEST version: $LATEST"
+          else
+            echo "Error fetching latest release data or parsing tag_name."
+            echo "API Response: $LATEST_RELEASE_DATA"
+            exit 1
+          fi
+
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "Error: LATEST version tag is empty or null after parsing."
+            exit 1
+          fi
+
+          ERPNext_VERSION_TAG="$LATEST"
+          FRAPPE_BRANCH_FOR_BUILD="version-$(echo "$LATEST" | cut -d. -f1 | sed 's/v//')"
+          IMAGE_TAG_VERSION="$(echo "$LATEST" | sed 's/v//')"
+
+          if [ -z "$IMAGE_TAG_VERSION" ] || [ "$IMAGE_TAG_VERSION" = "null" ]; then
+            echo "Error: IMAGE_TAG_VERSION is empty or null after processing LATEST tag."
+            exit 1
+          fi
+
+          echo "ERPNext_VERSION_TAG=$ERPNext_VERSION_TAG" >> $GITHUB_ENV
+          echo "FRAPPE_BRANCH_FOR_BUILD=$FRAPPE_BRANCH_FOR_BUILD" >> $GITHUB_ENV
+          echo "IMAGE_TAG_VERSION=$IMAGE_TAG_VERSION" >> $GITHUB_ENV
+
+          echo "Successfully set version tags:"
+          echo "ERPNext_VERSION_TAG: $ERPNext_VERSION_TAG"
+          echo "FRAPPE_BRANCH_FOR_BUILD: $FRAPPE_BRANCH_FOR_BUILD"
+          echo "IMAGE_TAG_VERSION: $IMAGE_TAG_VERSION"
+
+      - name: Free up disk space on runner
+        if: runner.os != 'Windows' # df and rm commands are for Linux/macOS
+        run: |
+          echo "Initial disk space:"
+          df -h
+          echo "Attempting to remove large pre-installed toolsets..."
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android /opt/hostedtoolcache/CodeQL || true
+          echo "Attempting to prune Docker system..."
+          sudo docker system prune -af --volumes || true
+          echo "Attempting to clean apt cache..."
+          sudo apt-get clean || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+          echo "Disk space after cleanup attempts:"
+          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
+        if: env.DOCKER_HUB_USERNAME_SET == 'true' && env.DOCKER_HUB_ACCESS_TOKEN_SET == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Encode apps.json to Base64
-        id: encode_apps_json
-        run: |
-          export APPS_JSON_BASE64=$(base64 -w 0 apps.json)
-          echo "APPS_JSON_BASE64=$APPS_JSON_BASE64" >> $GITHUB_ENV
+      - name: Log in to GitHub Container Registry
+        if: env.GHCR_PAT_IS_SET == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_PAT }}
 
-      - name: Build and push
+      - name: Prepare Docker Tags
+        id: prep_tags
+        run: |
+          TAG=${{ env.IMAGE_TAG_VERSION }}
+          MAJOR=v$(echo $TAG | cut -d. -f1)
+          IMAGE_DH=geniusdynamics/erpnext
+          IMAGE_GH=ghcr.io/${{ github.repository_owner }}/erpnext
+
+          # Initialize TAGS
+          TAGS=""
+
+          # Conditionally add Docker Hub tags
+          if [ "${{ env.DOCKER_HUB_USERNAME_SET }}" = "true" ] && [ "${{ env.DOCKER_HUB_ACCESS_TOKEN_SET }}" = "true" ]; then
+            TAGS="$TAGS,$IMAGE_DH:$TAG"
+            TAGS="$TAGS,$IMAGE_DH:$MAJOR"
+          fi
+
+          # Conditionally add GHCR tags
+          if [ "${{ env.GHCR_PAT_IS_SET }}" = "true" ]; then
+            TAGS="$TAGS,$IMAGE_GH:$TAG"
+            TAGS="$TAGS,$IMAGE_GH:$MAJOR"
+          fi
+
+          # Remove leading comma if present
+          if [ -n "$TAGS" ]; then
+            TAGS=$(echo $TAGS | sed 's/^,//')
+          fi
+
+          echo "FINAL_TAGS=${TAGS}" >> $GITHUB_ENV
+          echo "BUILD_ARGS=--build-arg ERPNEXT_VERSION=${{ env.ERPNext_VERSION_TAG }} --build-arg FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH_FOR_BUILD }}" >> $GITHUB_ENV
+
+      - name: Build and Push Image
+        if: env.FINAL_TAGS != '' # Only run if tags were actually generated
         uses: docker/build-push-action@v6
         with:
-          tags: geniusdynamics/erpnext:v15.49.1
+          context: .
+          file: Dockerfile
           push: true
+          tags: ${{ env.FINAL_TAGS }}
           build-args: |
-            APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}
+            ${{ env.BUILD_ARGS }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      # No need to manually tag or push, it's handled in the build command above
+      - name: Build Summary
+        run: |
+          echo "✔️ Build completed for ERPNext ${{ env.ERPNext_VERSION_TAG }}"
+          echo "Tags: ${{ env.FINAL_TAGS }}"
