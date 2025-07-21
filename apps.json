@@ -60,10 +60,6 @@
     "branch": "version-15"
   },
   {
-    "url": "https://github.com/genforge/whitelabel",
-    "branch": "version-15"
-  },
-  {
     "url": "https://github.com/genforge/pibiDAV",
     "branch": "version-15"
   },
