@@ -144,10 +144,6 @@
     "branch": "main"
   },
   {
-    "url": "https://github.com/genforge/GETPOS",
-    "branch": "getpos-1.4"
-  },
-  {
     "url": "https://github.com/genforge/POS-Awesome",
     "branch": "version-15"
   },
