@@ -99,6 +99,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_PAT }}
+      - name: Encode Apps Json
+        id: encode_apps_json
+        run: |
+          export APPS_JSON_BASE64=$(base64 -w 0 apps.json)
+          echo "APPS_JSON_BASE64=$APPS_JSON_BASE64" >> $GITHUB_ENV
 
       - name: Prepare Docker Tags
         id: prep_tags
@@ -141,6 +146,7 @@ jobs:
           tags: ${{ env.FINAL_TAGS }}
           build-args: |
             ${{ env.BUILD_ARGS }}
+            APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}
           platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
