@@ -136,7 +136,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
+          file: images/custom/Containerfile
           push: true
           tags: ${{ env.FINAL_TAGS }}
           build-args: |
