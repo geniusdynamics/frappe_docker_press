@@ -111,7 +111,7 @@ jobs:
           TAG=${{ env.IMAGE_TAG_VERSION }}
           MAJOR=v$(echo $TAG | cut -d. -f1)
           IMAGE_DH=geniusdynamics/erpnext
-          IMAGE_GH=ghcr.io/${{ github.repository_owner }}/erpnext
+          IMAGE_GH=ghcr.io/${{ github.repository_owner }}/erp-next
 
           # Initialize TAGS
           TAGS=""
