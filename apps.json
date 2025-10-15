@@ -178,5 +178,9 @@
   {
     "url": "https://github.com/genforge/whitelabel",
     "branch": "version-15"
+  },
+  {
+    "url": "https://github.com/genforge/smpp_gateway",
+    "branch": "main"
   }
 ]
