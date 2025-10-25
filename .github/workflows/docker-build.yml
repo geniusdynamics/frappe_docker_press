@@ -95,14 +95,7 @@ jobs:
             exit 0
           fi
 
-          # Convert the release date and today's date to UTC date strings for comparison
-          RELEASE_DATE_UTC=$(date -d "$RELEASE_DATE" --utc +'%Y-%m-%d')
-          TODAY_UTC=$(date --utc +'%Y-%m-%d')
 
-          if [ "$RELEASE_DATE_UTC" != "$TODAY_UTC" ]; then
-            echo "Skipping build: Release was not created today."
-            exit 0
-          fi
 
           ERPNext_VERSION_TAG="$LATEST_RELEASE_TAG"
           FRAPPE_BRANCH_FOR_BUILD="version-$(echo "$LATEST_RELEASE_TAG" | cut -d. -f1 | sed 's/v//')"
