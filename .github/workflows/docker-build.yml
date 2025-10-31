@@ -103,11 +103,13 @@ jobs:
           if [ "${{ env.DOCKER_HUB_USERNAME_SET }}" = "true" ] && [ "${{ env.DOCKER_HUB_ACCESS_TOKEN_SET }}" = "true" ]; then
             TAGS="$TAGS,$IMAGE_DH:$TAG"
             TAGS="$TAGS,$IMAGE_DH:$MAJOR"
+          TAGS="$TAGS,$IMAGE_DH:latest"
           fi
 
           if [ "${{ env.GHCR_PAT_IS_SET }}" = "true" ]; then
             TAGS="$TAGS,$IMAGE_GH:$TAG"
             TAGS="$TAGS,$IMAGE_GH:$MAJOR"
+          TAGS="$TAGS,$IMAGE_DH:latest"
           fi
 
           TAGS=$(echo $TAGS | sed 's/^,//')
