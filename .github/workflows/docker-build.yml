@@ -117,7 +117,7 @@ jobs:
 
       - name: Build and Push Image
         if: env.FINAL_TAGS != ''
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: images/custom/Containerfile
